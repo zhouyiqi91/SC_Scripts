@@ -2,9 +2,13 @@
 library(Seurat)
 library(tidyverse)
 library(pheatmap)
+library(argparser)
 
-setwd("/SGRNJ01/Aftersales/P2018016_Lung/20190610_jiace/tcell")
-all_data <- readRDS("./rds/all_TSNE_samples.rds")
+argv <- arg_parser('')
+argv <- add_argument(argv,"--rds", help="T cell Seurat rds")
+argv <- parse_args(argv)
+
+all_data <- readRDS(argv$rds)
 markers <- read_tsv("/SGRNJ/Database/sc_marker/tcell/t_cell_marker.txt")
 genes <- markers$gene
 
@@ -36,6 +40,7 @@ anno$type <- factor(anno$type,levels<-unique(anno$type))
 #exp <- AverageExpression(all_data)
 #exp1 <- exp[markers$gene,]
 
-pdf("markers.pdf")
-print (pheatmap(data.all,cluster_row = FALSE, cluster_col = FALSE,annotation_row = anno,anotation_names_row=FALSE,gaps_row = head(as.numeric(cumsum(table(anno$type))), -1)))
+pdf("tcell_markers.pdf",width=15)
+print (pheatmap(data.all,cluster_row = FALSE, cluster_col = T,display_numbers =T，
+	annotation_row = anno,anotation_names_row=FALSE,gaps_row = head(as.numeric(cumsum(table(anno$type))), -1)))
 dev.off()
