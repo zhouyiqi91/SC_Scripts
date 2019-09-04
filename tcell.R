@@ -41,6 +41,6 @@ anno$type <- factor(anno$type,levels<-unique(anno$type))
 #exp1 <- exp[markers$gene,]
 
 pdf("tcell_markers.pdf",width=15)
-print (pheatmap(data.all,cluster_row = FALSE, cluster_col = T,display_numbers =T，
+print (pheatmap(data.all,cluster_row = FALSE, cluster_col = T,display_numbers =T,
 	annotation_row = anno,anotation_names_row=FALSE,gaps_row = head(as.numeric(cumsum(table(anno$type))), -1)))
 dev.off()
