@@ -337,11 +337,11 @@ print("marker gene...")
 all_data <- checkall_data()
 use.gene <- all_data@var.genes
 all_data.markers <- FindAllMarkers(object = all_data, genes.use = use.gene)
+#all_data.markers <- rownames_to_column(all_data.markers,"genes")
 write.csv(all_data.markers,"csv/all_markers.csv")
 top_10 <- all_data.markers %>% group_by(cluster) %>% top_n(10, avg_logFC)
 write.csv(top_10,"csv/top_10_markers.csv")
 
-all_data.markers <- rownames_to_column(all_data.markers,"genes")
 for (c_cluster in unique(all_data.markers$cluster)){
     c_markers <- filter(all_data.markers,cluster==c_cluster)
     file_name <- paste0("./csv/",c_cluster,"_markers.tsv")
