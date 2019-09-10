@@ -19,8 +19,9 @@ argv <- add_argument(argv,"--genemin", help="filter nGene  min",default=200)
 argv <- add_argument(argv,"--genemax", help="filter nGene  max",default=Inf)
 argv <- add_argument(argv,"--umimin", help="filter umi  min",default=0)
 argv <- add_argument(argv,"--umimax", help="filter umi  max",default=30000)
-argv <- add_argument(argv,"--resolution", help="tSNE resolution",default=0.8)
+argv <- add_argument(argv,"--resolution", help="tSNE resolution",default=0.6)
 argv <- add_argument(argv,"--mono_gene",help="monocle order gene list")
+argv <- add_argument(argv,"--remove_contamination",help="remove doublets and unknown cluster in step 9",default="Y")
 argv <- parse_args(argv)
 
 #read args
@@ -39,6 +40,7 @@ compare <- unlist(strsplit(argv$compare,split=","))
 mono_gene <- argv$mono_gene
 ident_tsv <- argv$ident_tsv
 is_10X <- argv$is_10X
+remove_contamination <- argv$remove_contamination
 
 origin.cluster <- paste("res.",resolution,sep="")
 pWidth <- 1200
@@ -237,7 +239,7 @@ png("png/PCElbow.png",width=pWidth,height =pHeight)
 print (PCElbowPlot(object = all_data))
 dev.off()
 
-saveRDS(all_data,"rds/all_PCA.rds")
+#saveRDS(all_data,"rds/all_PCA.rds")
 }
 
 
@@ -265,7 +267,7 @@ pdf("pdf/TSNE_origin.pdf")
 print (TSNEPlot(object = all_data,do.label = TRUE,pt.size=0.5))
 dev.off()
 
-saveRDS(all_data, "rds/all_TSNE.rds")
+#saveRDS(all_data, "rds/all_TSNE.rds")
 }
 
 
@@ -609,11 +611,19 @@ if (grepl(9,step))
 {
 print("assign cell ident...")
 all_data <- checkall_data()
+new_rds_name <- "rds/new_ident.rds"
 
 setwd(outdir)
 cell_ident_file <- read.table(ident_tsv,header = TRUE,sep="\t",stringsAsFactors=FALSE)
 current_ident <- cell_ident_file[,1]
 new_ident <- cell_ident_file[,2]
+if (remove_contamination=="Y"){
+  bool <- grepl("unknown|doublet",new_ident)
+  currrent_ident <- current_ident[bool]
+  new_ident <- new_ident[bool]
+  all_data <- SubsetData(all_data,ident.use=current_ident)
+  new_rds_name <- "rds/new_ident_rm.rds"
+}
 
 origin.cluster <- paste("res.",resolution,sep="")
 all_data <- SetAllIdent(object = all_data, id = origin.cluster)
@@ -645,7 +655,7 @@ pdf("pdf/sample_ident_heatmap.pdf")
 print (pheatmap(freq_table,display_numbers = TRUE,number_format ="%.2f",fontsize_number=9,fontsize=11,main="sample_identity_heatmap") )
 dev.off()
 
-saveRDS(all_data,"rds/new_ident.rds")
+saveRDS(all_data,new_rds_name)
 }
 
 
