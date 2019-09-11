@@ -21,7 +21,7 @@ argv <- add_argument(argv,"--umimin", help="filter umi  min",default=0)
 argv <- add_argument(argv,"--umimax", help="filter umi  max",default=30000)
 argv <- add_argument(argv,"--resolution", help="tSNE resolution",default=0.6)
 argv <- add_argument(argv,"--mono_gene",help="monocle order gene list")
-argv <- add_argument(argv,"--remove_contamination",help="remove doublets and unknown cluster in step 9",default="Y")
+argv <- add_argument(argv,"--remove_contamination",help="remove doublets and unknown cluster in step 9",default="N")
 argv <- parse_args(argv)
 
 #read args
@@ -617,13 +617,24 @@ setwd(outdir)
 cell_ident_file <- read.table(ident_tsv,header = TRUE,sep="\t",stringsAsFactors=FALSE)
 current_ident <- cell_ident_file[,1]
 new_ident <- cell_ident_file[,2]
+
+if (TRUE %in% duplicated(current_ident))
+{
+  stop ("duplicated cluster names")
+}
+
 if (remove_contamination=="Y"){
   bool <- grepl("unknown|doublet",new_ident)
-  currrent_ident <- current_ident[bool]
-  new_ident <- new_ident[bool]
+  current_ident <- current_ident[!bool]
+  new_ident <- new_ident[!bool]
   all_data <- SubsetData(all_data,ident.use=current_ident)
   new_rds_name <- "rds/new_ident_rm.rds"
+  c_ident <- 0:(length(current_ident)-1)
+  c_ident <- paste0("C",c_ident)
+  new_ident <- paste(c_ident,new_ident,sep="_")
 }
+
+
 
 origin.cluster <- paste("res.",resolution,sep="")
 all_data <- SetAllIdent(object = all_data, id = origin.cluster)
@@ -655,7 +666,9 @@ pdf("pdf/sample_ident_heatmap.pdf")
 print (pheatmap(freq_table,display_numbers = TRUE,number_format ="%.2f",fontsize_number=9,fontsize=11,main="sample_identity_heatmap") )
 dev.off()
 
+print ("save rds")
 saveRDS(all_data,new_rds_name)
+print ("save done")
 }
 
 
@@ -744,5 +757,5 @@ TSNEPlot(all_data,,pt.size=0.5)
 }
 
 
-
+#######################
 
