@@ -10,6 +10,7 @@ argv <- add_argument(argv,"--is_10X", help="10X or not.if not provided,default=n
 argv <- add_argument(argv,"--mdir", help="matrix dir")
 argv <- add_argument(argv,"--rds",help="exist rds")
 argv <- add_argument(argv,"--step",help="steps to do.all steps are 123456789mono",default="12345")
+argv <- add_argument(argv,"--gene_number",help="use top n hvg.genes.default=1500",default=1500)
 argv <- add_argument(argv,"--type_marker_tsv",help="cell type marker tsv")
 argv <- add_argument(argv,"--ident_tsv",help="cluster identity tsv")
 argv <- add_argument(argv,"--compare", help="compare group name:G1vsG2,G3vsG4; split by ,")
@@ -217,12 +218,8 @@ print ("var.genes length:")
 vargene_len <- length(x = all_data@var.genes)
 print (vargene_len)
 
-if (vargene_len > 1500){
-  use.gene <- head(rownames(all_data@hvg.info), 1500)
-  print ("use top 1500 highly variable genes.")
-} else {
-  use.gene <- all_data@var.genes
-}
+
+use.gene <- head(rownames(all_data@hvg.info), 1500)
 
 # Scaling the data and removing unwanted sources of variation,consume too much mem
 # You can perform gene scaling on only the HVG, dramaticall_datay improving speed and memory use. Since dimensional reduction is
@@ -527,7 +524,7 @@ all_data <- checkall_data()
 setwd(outdir)
 
 tsne_idents <- levels(all_data@ident)
-all_data@meta.data$groups <- groups[all_data@meta.data$sample]
+all_data@meta.data$groups <- groups[all_data@meta.data$samples]
 all_data@meta.data$ident.group <- paste0(all_data@ident,"_",all_data@meta.data$groups)
 print ("saving rds file...")
 #saveRDS(all_data,"rds/all_TSNE_groups.rds")
@@ -545,7 +542,8 @@ for (cm in compare){
       s1<-paste(l,'_',comparegroup[1],sep='')
       s2<-paste(l,'_',comparegroup[2],sep='')
       tryCatch({
-        cm_markers <- FindMarkers(all_data, ident.1 = s1, ident.2 = s2,print.bar = FALSE,only.pos=TRUE,min.diff.pct=0.1)
+        cm_markers <- FindMarkers(all_data,  ident.1 = s1, ident.2 = s2,print.bar = FALSE,
+          min.diff.pct=0.1,genes.use = all_data@var.genes)
         output_dir <- paste(outdir,'/compare_diff/',cm,"/",sep="")
         file_name <- paste(s1,"_vs_",s2,".csv",sep="")
         output_file <- paste(output_dir,file_name,sep="")

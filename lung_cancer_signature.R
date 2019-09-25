@@ -5,6 +5,7 @@ a_gene <- genes$normal
 l_gene <- genes$cancer
 TSNEPlot(luad,do.label = T)
 
+gene <- c(a_gene,l_gene)
 y <- luad@data[gene,]
 a_mean <- colMeans(as.matrix(y[a_gene,]), na.rm = FALSE, dims = 1)
 l_mean <- colMeans(as.matrix(y[l_gene,]), na.rm = FALSE, dims = 1)

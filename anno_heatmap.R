@@ -140,3 +140,23 @@ SetIfNull <- function (x, default)
     return(x)
   }
 }
+
+main <- function(){
+	rds <- readRDS("/SGRNJ/Database/test/tests/auto_assign_test/rds/he_30.PRO.rds")
+	marker_test <- FindAllMarkers(rds,genes.use = rds@var.genes,max.cells.per.ident = 300)
+	top_gene <- marker_test %>% group_by(cluster) %>% top_n(3, avg_logFC)
+	genes <- top_gene$gene
+	no_dup <- !duplicated(genes)
+	no_dup_genes <- genes[no_dup]
+
+	rds <- ScaleData(rds,genes.use = genes)
+	anno <- top_gene$cluster[no_dup]
+	names(anno) <- top_3$gene[no_dup]
+
+	print(DoHeatmap(object=rds,genes.use=no_dup_genes,
+                slim.col.label=TRUE,
+                group.label.rot=FALSE, 
+                title = "cluster top markers",group.spacing = 0.2,rotate.key = TRUE,
+                
+                col.low="blue",col.mid="white",col.high="red",row_annotation = anno))
+}
