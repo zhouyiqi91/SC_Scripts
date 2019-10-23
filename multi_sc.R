@@ -10,7 +10,7 @@ argv <- add_argument(argv,"--is_10X", help="10X or not.if not provided,default=n
 argv <- add_argument(argv,"--mdir", help="matrix dir")
 argv <- add_argument(argv,"--rds",help="exist rds")
 argv <- add_argument(argv,"--step",help="steps to do.all steps are 123456789mono",default="12345")
-argv <- add_argument(argv,"--gene_number",help="use top n hvg.genes.default=1500",default=1500)
+argv <- add_argument(argv,"--gene_number",help="use top n hvg.genes.default=2000",default=2000)
 argv <- add_argument(argv,"--type_marker_tsv",help="cell type marker tsv")
 argv <- add_argument(argv,"--ident_tsv",help="cluster identity tsv")
 argv <- add_argument(argv,"--compare", help="compare group name:G1vsG2,G3vsG4; split by ,")
@@ -42,7 +42,7 @@ mono_gene <- argv$mono_gene
 ident_tsv <- argv$ident_tsv
 is_10X <- argv$is_10X
 remove_contamination <- argv$remove_contamination
-
+gene_number <- argv$gene_number
 origin.cluster <- paste("res.",resolution,sep="")
 pWidth <- 1200
 pHeight <- 1000
@@ -219,14 +219,14 @@ vargene_len <- length(x = all_data@var.genes)
 print (vargene_len)
 
 
-use.gene <- head(rownames(all_data@hvg.info), 1500)
+use.gene <- head(rownames(all_data@hvg.info), gene_number)
 
 # Scaling the data and removing unwanted sources of variation,consume too much mem
 # You can perform gene scaling on only the HVG, dramaticall_datay improving speed and memory use. Since dimensional reduction is
 # run only on HVG, this will not affect downstream results.
 
 
-all_data <- ScaleData(object = all_data,vars.to.regress = c("nUMI", "percent.mito"),genes.use =all_data@var.genes)
+all_data <- ScaleData(object = all_data,vars.to.regress = c("nUMI", "percent.mito"),genes.use =use.gene)
 
 # Perform linear dimensional reduction
 all_data <- RunPCA(object = all_data, pc.genes = use.gene, do.print = TRUE, pcs.print = 1:5, genes.print = 5)
@@ -246,7 +246,7 @@ if (grepl(3,step))
 {
 print("tsne...")
 all_data <- checkall_data()
-
+use.gene <- head(rownames(all_data@hvg.info), gene_number)
 setwd(outdir)
 # save.SNN = T saves the SNN so that the clustering algorithm can be rerun
 # using the same graph but with a different resolution value (see docs for
@@ -334,7 +334,7 @@ if (grepl(5,step))
 {
 print("marker gene...")
 all_data <- checkall_data()
-use.gene <- all_data@var.genes
+use.gene <- head(rownames(all_data@hvg.info), gene_number)
 all_data.markers <- FindAllMarkers(object = all_data, genes.use = use.gene)
 #all_data.markers <- rownames_to_column(all_data.markers,"genes")
 write.csv(all_data.markers,"csv/all_markers.csv")
@@ -543,7 +543,7 @@ for (cm in compare){
       s2<-paste(l,'_',comparegroup[2],sep='')
       tryCatch({
         cm_markers <- FindMarkers(all_data,  ident.1 = s1, ident.2 = s2,print.bar = FALSE,
-          min.diff.pct=0.1,genes.use = all_data@var.genes)
+          min.diff.pct=0.1,genes.use = use.gene)
         output_dir <- paste(outdir,'/compare_diff/',cm,"/",sep="")
         file_name <- paste(s1,"_vs_",s2,".csv",sep="")
         output_file <- paste(output_dir,file_name,sep="")
@@ -615,6 +615,9 @@ setwd(outdir)
 cell_ident_file <- read.table(ident_tsv,header = TRUE,sep="\t",stringsAsFactors=FALSE)
 current_ident <- cell_ident_file[,1]
 new_ident <- cell_ident_file[,2]
+c_ident <- 0:(length(current_ident)-1)
+c_ident <- paste0("C",c_ident)
+new_ident <- paste(c_ident,new_ident,sep="_")
 
 if (TRUE %in% duplicated(current_ident))
 {
@@ -627,9 +630,6 @@ if (remove_contamination=="Y"){
   new_ident <- new_ident[!bool]
   all_data <- SubsetData(all_data,ident.use=current_ident)
   new_rds_name <- "rds/new_ident_rm.rds"
-  c_ident <- 0:(length(current_ident)-1)
-  c_ident <- paste0("C",c_ident)
-  new_ident <- paste(c_ident,new_ident,sep="_")
 }
 
 
@@ -653,10 +653,11 @@ library(reshape2)
 freq_table <- prop.table(x=table(all_data@ident,all_data@meta.data[,"samples"]),margin=2)
 dat <- melt(freq_table,varnames=c("type","sample"),value.name = "percent" )
 dat$type <- as.character(dat$type)
-
+dat$type <- factor(dat$type,levels = new_ident)
 
 pdf("pdf/sample_ident_barplot_new.pdf")
-print (ggplot(dat, aes(x = sample, y = percent,fill = type )) + geom_bar(stat = 'identity') + coord_flip() +  scale_fill_manual(values=color2) ) 
+print (ggplot(dat, aes(x = sample, y = percent,fill = type )) + 
+  geom_bar(stat = 'identity') + coord_flip() +  scale_fill_manual(values=color2) ) 
 dev.off()
 
 library(pheatmap)
