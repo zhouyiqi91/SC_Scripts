@@ -615,9 +615,7 @@ setwd(outdir)
 cell_ident_file <- read.table(ident_tsv,header = TRUE,sep="\t",stringsAsFactors=FALSE)
 current_ident <- cell_ident_file[,1]
 new_ident <- cell_ident_file[,2]
-c_ident <- 0:(length(current_ident)-1)
-c_ident <- paste0("C",c_ident)
-new_ident <- paste(c_ident,new_ident,sep="_")
+
 
 if (TRUE %in% duplicated(current_ident))
 {
@@ -628,10 +626,14 @@ if (remove_contamination=="Y"){
   bool <- grepl("unknown|doublet",new_ident)
   current_ident <- current_ident[!bool]
   new_ident <- new_ident[!bool]
+
   all_data <- SubsetData(all_data,ident.use=current_ident)
   new_rds_name <- "rds/new_ident_rm.rds"
 }
 
+c_ident <- 0:(length(current_ident)-1)
+c_ident <- paste0("C",c_ident)
+new_ident <- paste(c_ident,new_ident,sep="_")
 
 
 origin.cluster <- paste("res.",resolution,sep="")
