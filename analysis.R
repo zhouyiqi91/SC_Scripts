@@ -96,29 +96,33 @@ TSNEPlot(rds,group.by="samples")
 
 ### marker heatmap
 
-meta.type = "new_ident"
+##heatmap
+meta.type = "res.0.6"
 #source("/SGRNJ/Public/Script/shouhou/SC_scripts_zyq/anno_heatmap.R")
-rds <- readRDS("/SGRNJ01/Aftersales/P2018016_Lung/paper1/rm_doublets/tcell/rds/new_ident_rm.rds")
-marker_test <- FindAllMarkers(rds,genes.use = rds@var.genes,max.cells.per.ident = 300)
-top_gene <- marker_test %>% group_by(cluster) %>% top_n(4, avg_logFC)
+rds <- readRDS("/SGRNJ01/Aftersales/P2018009_Lung/20190624_jiace/paper/rerun/fibro/rds/all_TSNE_samples.rds")
+#marker_test <- FindAllMarkers(rds,genes.use = rds@var.genes,max.cells.per.ident = 300)
+marker_test <- read_csv("/SGRNJ01/Aftersales/P2018009_Lung/20190624_jiace/paper/rerun/fibro/csv/all_markers.csv")
+top_gene <- marker_test %>% group_by(cluster) %>% top_n(10, avg_logFC)
+top_gene <- top_gene[!duplicated(genes),]
 genes <- top_gene$gene
-no_dup <- !duplicated(genes)
-no_dup_genes <- genes[no_dup]
+
 
 rds <- ScaleData(rds,genes.use = genes)
-data <- rds@scale.data[no_dup_genes,]
+data <- rds@scale.data[genes,]
 
-cell_type <- factor(unique(rds@ident))
+cell_type <- factor(sort(unique(rds@ident)))
 colors <- color1[c(1:length(cell_type))]
 names(colors) <- cell_type
-annotation_colors = list(cell_type=colors)
 
 anno_col <- rds@meta.data[,meta.type,drop=F]
 colnames(anno_col) <- "cell_type"
 anno_col$cell_type <- factor(anno_col$cell_type,levels=unique(anno_col$cell_type))
-library(pheatmap)
 
-#排序
+anno_row <- as.data.frame(top_gene[,c("cluster")])
+rownames(anno_row) <- top_gene$gene
+colnames(anno_row) <- "cell_marker"
+annotation_colors = list(cell_type=colors,cell_marker=colors)
+
 barcode <- c()
 genes <- c()
 for (type in cell_type){
@@ -131,8 +135,8 @@ for (type in cell_type){
 data1 <- data[genes,barcode]
 
 pheatmap(data1,cluster_row = FALSE, cluster_col = F,display_numbers =F,
-           annotation_col=anno_col,anotation_names_row=FALSE,
-          show_colnames=F,,annotation_colors=annotation_colors)
+         annotation_col=anno_col,anotation_names_row=FALSE,annotation_row=anno_row,
+         show_colnames=F,annotation_colors=annotation_colors,annotation_names_row = F)
 
 
 ###gsva
@@ -160,3 +164,34 @@ write.table(data2, "/Public/Script/shouhou/cellphonedb/test_lung/cell200/cell200
 
 meta_data <- cbind(rownames(cell200@meta.data), cell200@meta.data[,'big_type', drop=F])   #####  cluster is the user’s specific cluster column
 write.table(meta_data, "/Public/Script/shouhou/cellphonedb/test_lung/cell200/cell200_meta.tsv", sep='\t', quote=F, row.names=F)
+
+
+## ITH
+
+library(Seurat)
+library(tidyverse)
+library(reshape2)
+
+
+#argv
+patient_col = "patients"
+ident = "LUAD"
+rds_name = "/SGRNJ01/Aftersales/P2018016_Lung/paper1/rm_doublets/luad/LUAD_all.rds"
+
+#run
+rds <- readRDS(rds_name)
+rds <- SubsetData(rds,ident.use = ident)
+patients = unique(luad@meta.data[,patient_col])
+dat = tibble(patient=character(),iqr=numeric())
+
+for (patient in patients){
+  pcell = WhichCells(rds,subset.name = patient_col,
+                     accept.value=patient)
+  data = rds@data[,pcell]
+  corr = cor(as.matrix(data))
+  melt_cor <- melt(corr)
+  IQR = IQR(melt_cor$value)
+  dat = add_row(dat,patient=patient,iqr=IQR)
+}
+
+write_tsv(dat,"./dat.tsv")
